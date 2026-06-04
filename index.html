@@ -28,10 +28,22 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .form-label{display:block;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-family:'DM Mono',monospace;margin-bottom:5px}
 .form-input,.form-textarea,.form-select{width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;color:var(--text);background:var(--bg);font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
 .form-input:focus,.form-textarea:focus,.form-select:focus{border-color:var(--text);background:#fff}
+/* Glass inputs on login page only */
+#loginScreen .form-label{color:rgba(255,255,255,0.6)}
+#loginScreen .form-input{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#fff;border-radius:12px;padding:11px 14px}
+#loginScreen .form-input::placeholder{color:rgba(255,255,255,0.35)}
+#loginScreen .form-input:focus{background:rgba(255,255,255,0.14);border-color:rgba(255,255,255,0.4);outline:none}
 .form-group{margin-bottom:12px}
-.btn-login{width:100%;padding:11px;border-radius:var(--r);font-size:14px;font-weight:600;border:none;background:var(--text);color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px}
-.btn-login:hover{background:#333}
-.login-err{background:var(--red-light);color:var(--red-text);border-radius:var(--r);padding:9px 12px;font-size:13px;margin-bottom:14px;display:none}
+.btn-login{
+  width:100%;padding:13px;border-radius:12px;font-size:14px;font-weight:600;
+  border:none;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:6px;
+  background:linear-gradient(135deg, #5B4FCF 0%, #3D9970 100%);
+  color:#fff;letter-spacing:.2px;transition:opacity .2s, transform .15s;
+  box-shadow:0 4px 16px rgba(91,79,207,0.4);
+}
+.btn-login:hover{opacity:.9;transform:translateY(-1px)}
+.btn-login:active{transform:translateY(0)}
+.login-err{background:rgba(192,57,43,0.2);color:#ff9090;border:1px solid rgba(192,57,43,0.3);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:14px;display:none}
 .header{background:var(--text);color:#fff;padding:13px 18px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
 .header-title{font-size:15px;font-weight:600;letter-spacing:-.3px}
 .rep-badge{padding:4px 10px;border-radius:20px;font-size:11px;font-family:'DM Mono',monospace;background:rgba(255,255,255,.15)}
@@ -165,7 +177,7 @@ body.dark{
   --teal:#3ABFA0;--teal-light:#0F2820;--teal-text:#60D9BC;
 }
 body.dark .header{background:#0A0C12}
-body.dark .login-card{background:#1A1D27;border-color:#2E3147}
+/* dark login handled by glass styles above */
 body.dark .form-input,body.dark .form-textarea,body.dark .form-select{background:#0F1117;border-color:#2E3147;color:#E8EAF0}
 body.dark .form-input:focus,body.dark .form-textarea:focus{background:#0F1117;border-color:#5C6278}
 body.dark .date-input{background:#0F1117;border-color:#2E3147;color:#E8EAF0}
@@ -347,13 +359,7 @@ body.dark .btn-date:hover {
   color: #E8EAF0;
   border-color: #4A4F6A;
 }
-body.dark .btn-login {
-  background: #E8EAF0;
-  color: #0F1117;
-}
-body.dark .btn-login:hover {
-  background: #C8CAD8;
-}
+/* btn-login dark mode handled by gradient */
 body.dark .btn-save {
   background: var(--green);
   color: #fff;
@@ -372,31 +378,64 @@ body.dark .btn-save {
 
 
 /* ── GOOGLE / LOGIN PAGE ── */
-.login-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;padding:20px;background:var(--bg)}
-.login-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:32px 28px;width:100%;max-width:380px}
+.login-wrap{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  min-height:100vh;padding:20px;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 40%, #0f3460 70%, #1a1a2e 100%);
+  position:relative;overflow:hidden;
+}
+.login-wrap::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 20% 50%, rgba(91,79,207,0.3) 0%, transparent 60%),
+             radial-gradient(ellipse at 80% 20%, rgba(29,158,117,0.2) 0%, transparent 50%),
+             radial-gradient(ellipse at 60% 80%, rgba(91,79,207,0.15) 0%, transparent 50%);
+  pointer-events:none;
+}
+/* floating orbs */
+.login-wrap::after{
+  content:'';position:absolute;
+  width:300px;height:300px;border-radius:50%;
+  background:radial-gradient(circle, rgba(91,79,207,0.15) 0%, transparent 70%);
+  top:-80px;right:-80px;pointer-events:none;
+  animation:float 8s ease-in-out infinite;
+}
+@keyframes float{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-20px) scale(1.05)}}
+.login-card{
+  background:rgba(255,255,255,0.07);
+  backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);
+  border:1px solid rgba(255,255,255,0.15);
+  border-radius:24px;padding:36px 32px;width:100%;max-width:390px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+  position:relative;z-index:1;
+}
+body.dark .login-card{
+  background:rgba(255,255,255,0.05);
+  border-color:rgba(255,255,255,0.1);
+}
 .login-logo-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
-.login-app-name{font-size:18px;font-weight:600;letter-spacing:-.3px}
-.login-tagline{font-size:12px;color:var(--text3);margin-bottom:24px}
+.login-app-name{font-size:19px;font-weight:700;letter-spacing:-.3px;color:#fff}
+.login-tagline{font-size:12px;color:rgba(255,255,255,0.55);margin-bottom:24px}
 
 /* Role toggle */
-.role-toggle{display:flex;background:var(--surface2);border-radius:var(--r);padding:3px;gap:2px;margin-bottom:22px}
-.role-btn{flex:1;padding:8px 0;border:none;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:var(--text2);transition:all .2s}
-.role-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.1)}
-body.dark .role-btn.active{background:#2E3147;box-shadow:none}
+.role-toggle{display:flex;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:12px;padding:4px;gap:3px;margin-bottom:22px}
+.role-btn{flex:1;padding:9px 0;border:none;border-radius:9px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;background:transparent;color:rgba(255,255,255,0.55);transition:all .25s}
+.role-btn:hover{color:rgba(255,255,255,0.8)}
+.role-btn.active{background:rgba(255,255,255,0.15);color:#fff;box-shadow:0 2px 8px rgba(0,0,0,0.2)}
+body.dark .role-btn.active{background:rgba(255,255,255,0.12);color:#fff}
 
 /* Google button */
-.btn-google{width:100%;padding:11px 16px;border-radius:var(--r);font-size:13px;font-weight:500;border:1.5px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:background .15s;margin-bottom:16px}
-.btn-google:hover{background:var(--surface2)}
+.btn-google{width:100%;padding:12px 16px;border-radius:12px;font-size:13px;font-weight:500;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.12);color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;justify-content:center;gap:10px;transition:all .2s;margin-bottom:16px;backdrop-filter:blur(8px)}
+.btn-google:hover{background:rgba(255,255,255,0.2);border-color:rgba(255,255,255,0.35)}
 .btn-google svg{flex-shrink:0}
-.divider{display:flex;align-items:center;gap:10px;color:var(--text3);font-size:12px;margin-bottom:16px}
-.divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--border)}
+.divider{display:flex;align-items:center;gap:10px;color:rgba(255,255,255,0.35);font-size:12px;margin-bottom:16px}
+.divider::before,.divider::after{content:'';flex:1;height:1px;background:rgba(255,255,255,0.15)}
 
 /* Google account pill */
-.google-user-pill{display:flex;align-items:center;gap:10px;background:var(--surface2);border-radius:var(--r);padding:10px 13px;margin-bottom:16px}
+.google-user-pill{display:flex;align-items:center;gap:10px;background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:10px 13px;margin-bottom:16px}
 .google-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0}
 .google-avatar-init{width:34px;height:34px;border-radius:50%;background:var(--blue-light);color:var(--blue-text);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;font-family:'DM Mono',monospace}
-.google-name{font-size:13px;font-weight:500}
-.google-email{font-size:11px;color:var(--text3)}
+.google-name{font-size:13px;font-weight:500;color:#fff}
+.google-email{font-size:11px;color:rgba(255,255,255,0.5)}
 .btn-google-signout{margin-left:auto;font-size:11px;padding:4px 8px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text3);cursor:pointer;font-family:'DM Sans',sans-serif}
 
 /* PIN for rep role */
@@ -404,8 +443,8 @@ body.dark .role-btn.active{background:#2E3147;box-shadow:none}
 .pin-hint{font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.5}
 
 /* Setup notice */
-.setup-notice{background:var(--warn-light);border:1px solid var(--warn);border-radius:var(--r);padding:11px 13px;font-size:12px;color:var(--warn-text);margin-bottom:16px;line-height:1.6}
-.setup-notice code{background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px}
+.setup-notice{background:rgba(199,124,39,0.15);border:1px solid rgba(199,124,39,0.3);border-radius:10px;padding:11px 13px;font-size:12px;color:#f0b060;margin-bottom:16px;line-height:1.6}
+.setup-notice code{background:rgba(0,0,0,.2);padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px;color:#ffd090}
 
 /* ── MINI PRINTER STYLES ── */
 @media print {
@@ -516,6 +555,11 @@ body.dark .role-btn.active{background:#2E3147;box-shadow:none}
 </head>
 <body>
 <div id="loginScreen" class="login-wrap">
+  <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none">
+    <div style="position:absolute;width:180px;height:180px;border-radius:50%;background:rgba(91,79,207,0.12);top:15%;left:10%;animation:float 7s ease-in-out infinite"></div>
+    <div style="position:absolute;width:120px;height:120px;border-radius:50%;background:rgba(61,153,112,0.1);bottom:20%;right:15%;animation:float 9s ease-in-out infinite reverse"></div>
+    <div style="position:absolute;width:80px;height:80px;border-radius:50%;background:rgba(91,79,207,0.08);top:60%;left:5%;animation:float 6s ease-in-out infinite 2s"></div>
+  </div>
   <div class="login-card">
     <div class="login-logo-row">
       <span style="font-size:26px">📋</span>
@@ -619,7 +663,7 @@ function sd(d){
 function init(){
   let d=ld();
   if(!d.users.find(u=>u.username==='manager'))
-    d.users.push({id:'manager',username:'manager',password:'admin123',name:'Manager',role:'manager'});
+    d.users.push({id:'manager',username:'manager',password:'admin123',name:'Manager',role:'manager',email:''});
   sd(d);return d;
 }
 
@@ -1015,12 +1059,29 @@ function openModal(type,id){
     const reps=d.users.filter(u=>u.role==='rep');
     const repRows=reps.map(r=>`
       <div class="rep-manage-card">
-        <div><div style="font-weight:600;font-size:14px">${r.name}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">@${r.username}</div></div>
-        <button class="btn-a red" onclick="deleteRep('${r.id}')">🗑 Remove</button>
+        <div>
+          <div style="font-weight:600;font-size:14px">${r.name}</div>
+          <div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">@${r.username} ${r.email?'· '+r.email:''}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-a" onclick="editRepEmail('${r.id}','${r.email||''}')">✏ Email</button>
+          <button class="btn-a red" onclick="deleteRep('${r.id}')">🗑 Remove</button>
+        </div>
       </div>`).join('')||'<div style="color:var(--text3);font-size:13px;padding:8px 0">No reps yet.</div>';
+    
+    // Manager own account email
+    const mgr = d.users.find(u=>u.role==='manager');
     mw.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()">
     <div class="modal" style="max-width:460px">
       <div class="modal-title">⚙ Manage Reps</div>
+      <div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:var(--r)">
+        <div style="font-size:12px;font-weight:600;margin-bottom:6px">Your Google Email (Manager)</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-input" id="mgr_email" placeholder="your@gmail.com" type="email" value="${mgr.email||''}" style="flex:1">
+          <button class="btn-a green" onclick="saveMgrEmail()">Save</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Link your Gmail so you can sign in with Google</div>
+      </div>
       <div id="repList">${repRows}</div>
       <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:14px">
         <div style="font-size:13px;font-weight:600;margin-bottom:10px">Add New Rep</div>
@@ -1028,6 +1089,7 @@ function openModal(type,id){
           <div class="form-group"><label class="form-label">Full Name *</label><input class="form-input" id="nr_name" placeholder="e.g. Abena Owusu"></div>
           <div class="form-group"><label class="form-label">Username *</label><input class="form-input" id="nr_user" placeholder="e.g. abena"></div>
         </div>
+        <div class="form-group"><label class="form-label">Google Email (for Google Sign-In)</label><input class="form-input" id="nr_email" placeholder="e.g. abena@gmail.com" type="email"></div>
         <div class="form-group"><label class="form-label">Password *</label><input type="password" class="form-input" id="nr_pass" placeholder="Set a password"></div>
       </div>
       <div class="modal-footer">
@@ -1081,9 +1143,29 @@ function addRep(){
   if(!name||!username||!password){alert('Please fill all fields.');return;}
   const d=ld();
   if(d.users.find(u=>u.username===username)){alert('Username already exists.');return;}
-  d.users.push({id:'rep_'+Date.now(),username,password,name,role:'rep'});
+  const repEmail=document.getElementById('nr_email').value.trim().toLowerCase();
+  d.users.push({id:'rep_'+Date.now(),username,password,name,role:'rep',email:repEmail});
   sd(d);closeModal();renderRepTabs();render();
   alert(`Rep added!\nUsername: ${username}\nPassword: ${password}\nShare this with them.`);
+}
+function saveMgrEmail(){
+  const email=document.getElementById('mgr_email').value.trim().toLowerCase();
+  const d=ld();
+  const mgr=d.users.find(u=>u.role==='manager');
+  mgr.email=email;
+  sd(d);
+  alert('Manager Google email saved! You can now sign in with Google.');
+  closeModal();
+}
+function editRepEmail(id, current){
+  const email=prompt('Enter Google email for this rep:',current||'');
+  if(email===null) return;
+  const d=ld();
+  const rep=d.users.find(u=>u.id===id);
+  rep.email=email.trim().toLowerCase();
+  sd(d);
+  closeModal();
+  openModal('reps');
 }
 function deleteRep(id){
   if(!confirm('Remove rep? Their customer records remain.'))return;
