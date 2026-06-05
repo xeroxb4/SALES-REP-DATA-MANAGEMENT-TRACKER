@@ -685,14 +685,14 @@ function renderDashboard(){
   <div class="dash-grid">
     <div class="dash-card green-card">
       <div class="dash-card-stripe"></div>
-      <div class="dash-card-icon green"></div>
+      <div class="dash-card-icon green" style="font-size:20px">&#x1F3EA;</div>
       <div class="dash-card-label">Total Shops</div>
       <div class="dash-card-value">${shops.length}</div>
       <div class="dash-card-sub">Active customer shops</div>
     </div>
     <div class="dash-card purple-card">
       <div class="dash-card-stripe"></div>
-      <div class="dash-card-icon purple"></div>
+      <div class="dash-card-icon purple" style="font-size:20px">&#x1F4E6;</div>
       <div class="dash-card-label">Total Orders</div>
       <div class="dash-card-value">${orders.length}</div>
       <div class="dash-card-sub">${orders.filter(o=>getStatus(o)==='paid'||getStatus(o)==='credit').length} fully cleared</div>
