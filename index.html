@@ -1205,7 +1205,7 @@ function openModal(type,id,extraId){
   } else if(type==='reps'){
     const reps=d.users.filter(u=>u.role==='rep');
     const mgr=d.users.find(u=>u.role==='manager');
-    const repRows=reps.map(r=>`<div class="rep-manage-card"><div><div style="font-weight:600;font-size:14px">${r.name}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">@${r.username} ${r.email?'\u00B7 '+r.email:''}</div></div><div style="display:flex;gap:6px"><button class="btn-a" onclick="editRepEmail('${r.id}','${r.email||''}')"> Email</button><button class="btn-a red" onclick="deleteRep('${r.id}')"></button></div></div>`).join('')||'<div style="color:var(--text3);font-size:13px;padding:8px 0">No reps yet.</div>';
+    const repRows=reps.map(r=>`<div class="rep-manage-card"><div><div style="font-weight:600;font-size:14px">${r.name}</div><div style="font-size:11px;color:var(--text3);font-family:'DM Mono',monospace">@${r.username} ${r.email?'\u00B7 '+r.email:''}</div></div><div style="display:flex;gap:6px"><button class="btn-a" onclick="editRepEmail('${r.id}','${r.email||''}')"> Email</button><button class="btn-a red" onclick="deleteRep('${r.id}')">&#x1F5D1; Remove</button></div></div>`).join('')||'<div style="color:var(--text3);font-size:13px;padding:8px 0">No reps yet.</div>';
     mw.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:480px">
       <div class="modal-title"> Manage Reps</div>
       <div style="margin-bottom:12px;padding:12px;background:var(--surface2);border-radius:var(--r)">
