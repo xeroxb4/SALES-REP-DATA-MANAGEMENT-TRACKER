@@ -91,9 +91,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);fon
 .main{padding:16px;max-width:1000px;margin:0 auto}
 
 /* ── DASHBOARD ── */
-.dash-hero{border-radius:var(--rl2);padding:24px;margin-bottom:16px;background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 50%,#1a1a2e 100%);position:relative;overflow:hidden;color:#fff}
+.dash-hero{border-radius:var(--rl2);padding:24px;margin-bottom:16px;background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 50%,#1a1a2e 100%) !important;position:relative;overflow:hidden;color:#fff;isolation:isolate}
 .dash-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 30% 50%,rgba(91,79,207,.4) 0%,transparent 60%),radial-gradient(ellipse at 80% 30%,rgba(29,158,117,.25) 0%,transparent 50%);pointer-events:none}
-body.dark .dash-hero{background:linear-gradient(135deg,#0a0c18 0%,#0d1f3c 50%,#0a0c18 100%)}
+body.dark .dash-hero{background:linear-gradient(135deg,#0a0c18 0%,#0d1f3c 50%,#0a0c18 100%) !important}
 .dash-hero-content{position:relative;z-index:1}
 .dash-hero h2{font-size:22px;font-weight:600;margin-bottom:4px;letter-spacing:-.3px}
 .dash-hero p{font-size:13px;color:rgba(255,255,255,.6);margin-bottom:16px}
@@ -113,10 +113,10 @@ body.dark .dash-hero{background:linear-gradient(135deg,#0a0c18 0%,#0d1f3c 50%,#0
 .dash-card.red-card::after{background:var(--red)}
 .dash-card.teal-card::after{background:var(--teal)}
 .dash-card-icon{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px}
-.dash-card-icon.green{background:var(--gl);color:var(--green)}
-.dash-card-icon.purple{background:var(--pl);color:var(--purple)}
-.dash-card-icon.red{background:var(--rl);color:var(--red)}
-.dash-card-icon.teal{background:var(--tl);color:var(--teal)}
+.dash-card-icon.green{background:var(--gl) !important;color:var(--green) !important}
+.dash-card-icon.purple{background:var(--pl) !important;color:var(--purple) !important}
+.dash-card-icon.red{background:var(--rl) !important;color:var(--red) !important}
+.dash-card-icon.teal{background:var(--tl) !important;color:var(--teal) !important}
 .dash-card-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;font-family:'DM Mono',monospace;margin-bottom:4px}
 .dash-card-value{font-size:22px;font-weight:600;letter-spacing:-.5px}
 .dash-card-sub{font-size:11px;color:var(--text3);margin-top:2px}
@@ -126,9 +126,7 @@ body.dark .dash-hero{background:linear-gradient(135deg,#0a0c18 0%,#0d1f3c 50%,#0
 .section-title{font-size:15px;font-weight:600;letter-spacing:-.2px}
 .filter-bar{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:11px;align-items:center}
 .tab{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);transition:all .15s;font-family:'DM Sans',sans-serif;white-space:nowrap}
-.tab:hover,.tab.active{background:var(--accent);color:#fff !important;border-color:var(--accent)}
-body.dark .tab.active{background:var(--accent);color:#fff !important;border-color:var(--accent)}
-body.dark .tab:hover{background:var(--accent);color:#fff !important}
+.tab:hover,.tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .search-wrap{position:relative;flex:1;min-width:150px}
 .search-wrap svg{position:absolute;left:9px;top:50%;transform:translateY(-50%);opacity:.4;pointer-events:none}
 .search-input{width:100%;padding:7px 10px 7px 30px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;outline:none}
@@ -265,7 +263,8 @@ body.dark .tab:hover{background:var(--accent);color:#fff !important}
 
 /* dark mode active tab fix */
 body.dark .nav-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
-body.dark .tab.active{background:var(--accent) !important;color:#fff !important;border-color:var(--accent) !important}
+body.dark .tab.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+body.dark .tab:hover{background:var(--accent);color:#fff}
 
 /* ── OVERDUE FLASH ANIMATION ── */
 @keyframes flashPulse{
