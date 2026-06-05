@@ -1408,7 +1408,7 @@ function exportExcel(){
     });
     rows.push(['','','','','','','TOTALS',rInv,rPaid,rInv-rPaid,'']);
     rows.push([]);
-    rows.push(['','','','','','','Collection Rate',repOrders.length>0?(rPaid/rInv*100).toFixed(1)+'%','','','']);
+    var collRate=repOrders.length>0?((rPaid/rInv)*100).toFixed(1)+'%':'N/A';rows.push(['','','','','','','Collection Rate',collRate,'','','']);
     const wsRep=XLSX.utils.aoa_to_sheet(rows);
     wsRep['!cols']=[{wch:4},{wch:12},{wch:12},{wch:20},{wch:16},{wch:45},{wch:14},{wch:16},{wch:16},{wch:16},{wch:14}];
     const safeRepName=rep.name.replace(/[^a-zA-Z0-9 ]/g,'').slice(0,28);
