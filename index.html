@@ -475,17 +475,50 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
 
 <script>
 const GOOGLE_CLIENT_ID = '470638059581-rtno2bifum3b4ki1cv86ij6nn7ojoc1s.apps.googleusercontent.com';
+const API_URL = 'https://sale-rep-api.onrender.com';
+let authToken = null;
 const DISTRIBUTORS = ['AMATA','DADDY ASH'];
+function getId(obj){ return obj._id || obj.id || ''; }
 
-function ld(){return JSON.parse(localStorage.getItem('mkt5')||'{"users":[],"shops":[],"orders":[]}');}
-function sd(d){localStorage.setItem('mkt5',JSON.stringify(d));if(googleUser&&isGCfg())saveToDrive(d);}
+// ── API HELPERS ──
+async function api(path, method='GET', body=null){
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if(authToken) opts.headers['Authorization'] = 'Bearer ' + authToken;
+  if(body) opts.body = JSON.stringify(body);
+  const res = await fetch(API_URL + path, opts);
+  if(!res.ok){ const err = await res.json().catch(()=>({error:'Network error'})); throw new Error(err.error||'Request failed'); }
+  return res.json();
+}
+
+// Keep localStorage as cache
+function ld(){return JSON.parse(localStorage.getItem('mkt5')||'{"users":[],"shops":[],"orders":[],"visits":[]}');}
+function sd(d){localStorage.setItem('mkt5',JSON.stringify(d));}
+
+// Load all data from API into local cache
+async function loadFromAPI(){
+  try {
+    const [users, shops, orders, visits] = await Promise.all([
+      api('/api/users'),
+      api('/api/shops'),
+      api('/api/orders'),
+      api('/api/visits')
+    ]);
+    const d = { users, shops, orders, visits };
+    sd(d);
+    return d;
+  } catch(e) {
+    console.warn('API load failed, using cache:', e.message);
+    return ld();
+  }
+}
+
 function init(){
   let d=ld();
   if(!d.shops)d.shops=[];
   if(!d.orders)d.orders=[];
-  if(!d.users.find(u=>u.username==='manager'))
-    d.users.push({id:'manager',username:'manager',password:'admin123',name:'Manager',role:'manager',email:''});
-  sd(d);return d;
+  if(!d.visits)d.visits=[];
+  if(!d.users)d.users=[];
+  return d;
 }
 
 let CU=null,VR=null,PAGE='dashboard',DF={mode:'all',from:null,to:null};
@@ -549,14 +582,20 @@ function triggerGoogleSignIn(){
   google.accounts.id.initialize({client_id:GOOGLE_CLIENT_ID,callback:handleGoogleCredential,auto_select:false});
   google.accounts.id.prompt();
 }
-function handleGoogleCredential(response){
+async function handleGoogleCredential(response){
   const payload=parseJwt(response.credential);
   googleUser={name:payload.name,email:payload.email,picture:payload.picture,token:response.credential};
   showGooglePill(googleUser);
-  const d=init();
-  const user=d.users.find(u=>u.email&&u.email.toLowerCase()===payload.email.toLowerCase());
-  if(user)completeLogin(user);
-  else{document.getElementById('loginErr').textContent='No account linked to this Google email. Use password login or ask manager to link your email.';document.getElementById('loginErr').style.display='block';}
+  try {
+    const res = await api('/api/login/google','POST',{email:payload.email});
+    authToken = res.token;
+    localStorage.setItem('mkt5_token', authToken);
+    await loadFromAPI();
+    completeLogin(res.user);
+  } catch(e) {
+    document.getElementById('loginErr').textContent='No account linked to this Google email. Use password login or ask your manager to link your email.';
+    document.getElementById('loginErr').style.display='block';
+  }
 }
 function showGooglePill(gu){
   const pill=document.getElementById('googleUserPill');
@@ -581,28 +620,44 @@ async function getAccessToken(){return new Promise(resolve=>{if(!isGCfg()){resol
 
 // -- AUTH --
 function setLoginRole(r){loginRole=r;document.getElementById('roleAdminBtn').classList.toggle('active',r==='admin');document.getElementById('roleRepBtn').classList.toggle('active',r==='rep');}
-function completeLogin(user){
+async function completeLogin(user){
   if(!user)return;
   document.getElementById('loginErr').style.display='none';
-  CU=user;VR=user.role==='manager'?null:user.id;
+  const uid = user._id || user.id;
+  CU={...user, id: uid};
+  VR=user.role==='manager'?null:uid;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('userBadge').textContent=user.name+(user.role==='manager'?' (Manager)':'');
   if(user.role==='manager'){document.getElementById('userBadge').classList.add('manager');document.getElementById('manageRepsBtn').style.display='inline-flex';}
   else{document.getElementById('manageRepsBtn').style.display='none';}
-  saveSession(user);pushAppState();
+  saveSession({...user,id:uid});pushAppState();
+  // Load fresh data from API
+  await loadFromAPI();
   setPage('dashboard',document.querySelector('.nav-tab'));
 }
-function doLogin(){
+async function doLogin(){
   const u=document.getElementById('loginUser').value.trim();
   const p=document.getElementById('loginPass').value;
-  const d=init();
-  const user=d.users.find(x=>x.username===u&&x.password===p);
-  if(!user){document.getElementById('loginErr').textContent='Incorrect username or password.';document.getElementById('loginErr').style.display='block';return;}
-  completeLogin(user);
+  if(!u||!p){document.getElementById('loginErr').textContent='Please enter username and password.';document.getElementById('loginErr').style.display='block';return;}
+  const btn=document.querySelector('.btn-login');
+  btn.textContent='Signing in...';btn.disabled=true;
+  try {
+    const res = await api('/api/login','POST',{username:u,password:p});
+    authToken = res.token;
+    localStorage.setItem('mkt5_token', authToken);
+    await loadFromAPI();
+    completeLogin(res.user);
+  } catch(e) {
+    document.getElementById('loginErr').textContent=e.message||'Incorrect username or password.';
+    document.getElementById('loginErr').style.display='block';
+  } finally {
+    btn.textContent='Sign In →';btn.disabled=false;
+  }
 }
 function logout(){
   CU=null;VR=null;PAGE='dashboard';DF={mode:'all',from:null,to:null};
+  authToken=null;localStorage.removeItem('mkt5_token');
   googleUser=null;driveFileId=null;clearSession();clearGoogleUser();
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -991,9 +1046,9 @@ function renderRoute(){
 }
 
 
-function toggleShopDay(shopId,day,el){
+async function toggleShopDay(shopId,day,el){
   const d=ld();
-  const shop=d.shops.find(s=>s.id===shopId);
+  const shop=d.shops.find(s=>(s.id||s._id)===shopId);
   if(!shop.routeDays)shop.routeDays=[];
   if(shop.routeDays.includes(day)){
     shop.routeDays=shop.routeDays.filter(x=>x!==day);
@@ -1002,7 +1057,10 @@ function toggleShopDay(shopId,day,el){
     shop.routeDays.push(day);
     el.classList.add('active');
   }
-  sd(d);
+  try {
+    await api('/api/shops/'+shopId,'PUT',{routeDays:shop.routeDays});
+    sd(d);
+  } catch(e){ console.warn('Route day update failed:',e.message); }
 }
 
 function markVisitedNoSale(shopId,shopName){
@@ -1017,8 +1075,8 @@ function markVisitedNoSale(shopId,shopName){
 }
 
 
-function delShop(id){if(!confirm('Delete this shop? All its orders will remain.'))return;const d=ld();d.shops=d.shops.filter(s=>s.id!==id);sd(d);renderPage();}
-function delOrder(id){if(!confirm('Delete this order?'))return;const d=ld();d.orders=d.orders.filter(o=>o.id!==id);sd(d);renderPage();}
+async function delShop(id){if(!confirm('Delete this shop? All its orders will remain.'))return;try{await api('/api/shops/'+id,'DELETE');const d=ld();d.shops=d.shops.filter(s=>(s.id||s._id)!==id);sd(d);renderPage();}catch(e){alert('Error: '+e.message);}}
+async function delOrder(id){if(!confirm('Delete this order?'))return;try{await api('/api/orders/'+id,'DELETE');const d=ld();d.orders=d.orders.filter(o=>(o.id||o._id)!==id);sd(d);renderPage();}catch(e){alert('Error: '+e.message);}}
 
 // -- PRODUCT TEMP --
 function renderTmpProds(){
@@ -1242,73 +1300,89 @@ function selectCreditWeeks(w,el){
   el.classList.add('active');
 }
 
-function saveShop(){
+async function saveShop(){
   const name=document.getElementById('s_name').value.trim();
   if(!name){alert('Please enter a shop name.');return;}
-  const d=ld();
-  d.shops.push({
-    id:Date.now().toString(),repId:CU.id,name,
-    owner:document.getElementById('s_owner').value.trim(),
-    contact:document.getElementById('s_contact').value.trim(),
-    location:document.getElementById('s_location').value.trim(),
-    tin:document.getElementById('s_tin').value.trim(),
-    creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
-    notes:document.getElementById('s_notes').value.trim(),
-  });
-  sd(d);closeModal();renderPage();
+  try {
+    const shop = await api('/api/shops','POST',{
+      name,
+      owner:document.getElementById('s_owner').value.trim(),
+      contact:document.getElementById('s_contact').value.trim(),
+      location:document.getElementById('s_location').value.trim(),
+      tin:document.getElementById('s_tin').value.trim(),
+      creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
+      notes:document.getElementById('s_notes').value.trim(),
+    });
+    const d=ld();d.shops.push(shop);sd(d);closeModal();renderPage();
+  } catch(e){ alert('Error: '+e.message); }
 }
-function updateShop(id){
-  const d=ld();const s=d.shops.find(x=>x.id===id);
-  s.name=document.getElementById('s_name').value.trim()||s.name;
-  s.owner=document.getElementById('s_owner').value.trim();
-  s.contact=document.getElementById('s_contact').value.trim();
-  s.location=document.getElementById('s_location').value.trim();
-  s.tin=document.getElementById('s_tin').value.trim();
-  s.creditLimit=parseFloat(document.getElementById('s_credit').value)||0;
-  s.notes=document.getElementById('s_notes').value.trim();
-  sd(d);closeModal();renderPage();
+async function updateShop(id){
+  try {
+    const updated = await api('/api/shops/'+id,'PUT',{
+      name:document.getElementById('s_name').value.trim(),
+      owner:document.getElementById('s_owner').value.trim(),
+      contact:document.getElementById('s_contact').value.trim(),
+      location:document.getElementById('s_location').value.trim(),
+      tin:document.getElementById('s_tin').value.trim(),
+      creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
+      notes:document.getElementById('s_notes').value.trim(),
+    });
+    const d=ld();const idx=d.shops.findIndex(x=>(x.id||x._id)===id);
+    if(idx>-1)d.shops[idx]=updated;sd(d);closeModal();renderPage();
+  } catch(e){ alert('Error: '+e.message); }
 }
 
-function saveOrder(){
+async function saveOrder(){
   const shopId=document.getElementById('o_shop').value;
   if(!shopId){alert('Please select a shop.');return;}
   if(tmpProds.length===0){alert('Please add at least one product.');return;}
   const initPay=parseFloat(document.getElementById('o_initpay').value)||0;
   const orderDate=document.getElementById('o_date').value||today();
   const creditDue=selectedPayMethod==='credit'?addDays(orderDate,selectedCreditWeeks*7):null;
-  const d=ld();
-  const order={
-    id:Date.now().toString(),orderNum:nextOrderNum(),repId:CU.id,shopId,
-    distributor:document.getElementById('o_distrib').value,
-    products:JSON.parse(JSON.stringify(tmpProds)),
-    date:orderDate,
-    paymentType:selectedPayMethod,
-    creditWeeks:selectedPayMethod==='credit'?selectedCreditWeeks:null,
-    creditDue,
-    notes:document.getElementById('o_notes').value.trim(),
-    payments:[]
-  };
-  if(initPay>0)order.payments.push({amount:initPay,date:orderDate,note:selectedPayMethod==='credit'?'Initial deposit':selectedPayMethod});
-  d.orders.push(order);
-  sd(d);closeModal();PAGE='orders';document.querySelectorAll('.nav-tab').forEach((t,i)=>{t.classList.remove('active');if(i===2)t.classList.add('active');});renderPage();
+  const payments=[];
+  if(initPay>0)payments.push({amount:initPay,date:orderDate,note:selectedPayMethod==='credit'?'Initial deposit':selectedPayMethod});
+  try {
+    const order = await api('/api/orders','POST',{
+      shopId,
+      distributor:document.getElementById('o_distrib').value,
+      products:JSON.parse(JSON.stringify(tmpProds)),
+      date:orderDate,
+      paymentType:selectedPayMethod,
+      creditWeeks:selectedPayMethod==='credit'?selectedCreditWeeks:null,
+      creditDue,
+      notes:document.getElementById('o_notes').value.trim(),
+      payments
+    });
+    const d=ld();d.orders.unshift(order);sd(d);
+    closeModal();PAGE='orders';
+    document.querySelectorAll('.nav-tab').forEach((t,i)=>{t.classList.remove('active');if(i===2)t.classList.add('active');});
+    renderPage();
+  } catch(e){ alert('Error saving order: '+e.message); }
 }
-function updateOrder(id){
+async function updateOrder(id){
   if(tmpProds.length===0){alert('Please add at least one product.');return;}
-  const d=ld();const o=d.orders.find(x=>x.id===id);
-  o.shopId=document.getElementById('o_shop').value||o.shopId;
-  o.distributor=document.getElementById('o_distrib').value;
-  o.date=document.getElementById('o_date').value||o.date;
-  o.products=JSON.parse(JSON.stringify(tmpProds));
-  o.notes=document.getElementById('o_notes').value.trim();
-  sd(d);closeModal();renderPage();
+  try {
+    const d=ld();const o=d.orders.find(x=>(x.id||x._id)===id);
+    const updated = await api('/api/orders/'+id,'PUT',{
+      shopId:document.getElementById('o_shop').value||o.shopId,
+      distributor:document.getElementById('o_distrib').value,
+      date:document.getElementById('o_date').value||o.date,
+      products:JSON.parse(JSON.stringify(tmpProds)),
+      notes:document.getElementById('o_notes').value.trim()
+    });
+    const idx=d.orders.findIndex(x=>(x.id||x._id)===id);
+    if(idx>-1)d.orders[idx]=updated;sd(d);closeModal();renderPage();
+  } catch(e){ alert('Error: '+e.message); }
 }
-function addPayment(id){
+async function addPayment(id){
   const amount=parseFloat(document.getElementById('p_amount').value);
   const date=document.getElementById('p_date').value;
   if(!amount||amount<=0||!date){alert('Please enter a valid amount and date.');return;}
-  const d=ld();const o=d.orders.find(x=>x.id===id);
-  o.payments.push({amount,date,note:document.getElementById('p_note').value.trim()});
-  sd(d);closeModal();renderPage();
+  try {
+    const updated = await api('/api/orders/'+id+'/payments','POST',{amount,date,note:document.getElementById('p_note').value.trim()});
+    const d=ld();const idx=d.orders.findIndex(x=>(x.id||x._id)===id);
+    if(idx>-1)d.orders[idx]=updated;sd(d);closeModal();renderPage();
+  } catch(e){ alert('Error: '+e.message); }
 }
 function addRep(){
   const name=document.getElementById('nr_name').value.trim();
@@ -1322,9 +1396,13 @@ function addRep(){
   sd(d);closeModal();openModal('reps');
   alert(`Rep added!\nUsername: ${username}\nPassword: ${password}`);
 }
-function deleteRep(id){
+async function deleteRep(id){
   if(!confirm('Remove rep? Their data remains.'))return;
-  const d=ld();d.users=d.users.filter(u=>u.id!==id);sd(d);closeModal();renderPage();
+  try {
+    await api('/api/users/'+id,'DELETE');
+    const d=ld();d.users=d.users.filter(u=>(u.id||u._id)!==id);sd(d);
+    closeModal();renderPage();
+  } catch(e){ alert('Error: '+e.message); }
 }
 function editRepEmail(id,current){
   const email=prompt('Enter Google email for this rep:',current||'');
@@ -1569,7 +1647,23 @@ function doPrint(){
 applyTheme();
 checkSetupNotice();
 init();
-(function(){const user=loadSession();if(user)completeLogin(user);})();
+(async function(){
+  const savedToken = localStorage.getItem('mkt5_token');
+  if(savedToken){
+    authToken = savedToken;
+    try {
+      // verify token by loading data
+      const d = await loadFromAPI();
+      const sess = loadSession();
+      if(sess){
+        // find user in loaded data
+        const user = d.users.find(u=>u.id===sess.id||u._id===sess.id||u.username===sess.username);
+        if(user) completeLogin(user);
+        else { authToken=null; localStorage.removeItem('mkt5_token'); }
+      } else { authToken=null; localStorage.removeItem('mkt5_token'); }
+    } catch(e){ authToken=null; localStorage.removeItem('mkt5_token'); }
+  }
+})();
 window.addEventListener('popstate',function(e){
   const modal=document.getElementById('modalWrap');
   if(modal&&modal.innerHTML.trim()!==''){closeModal();pushAppState();return;}
