@@ -353,6 +353,65 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
 .day-chip{padding:3px 9px;border-radius:12px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-family:'DM Sans',sans-serif;transition:all .15s;user-select:none}
 .day-chip.active{background:var(--accent);color:#fff;border-color:var(--accent)}
 
+
+/* ── SYNC & OFFLINE ── */
+.sync-btn{
+  position:relative;padding:7px 12px;border-radius:var(--r);font-size:12px;
+  font-weight:500;cursor:pointer;border:1px solid var(--border);
+  background:var(--surface);color:var(--text2);font-family:'DM Sans',sans-serif;
+  transition:all .2s;display:inline-flex;align-items:center;gap:6px;
+}
+.sync-btn:hover{background:var(--surface2);color:var(--text)}
+.sync-btn.syncing{background:var(--bl);border-color:var(--blue);color:var(--bt)}
+.sync-btn.has-pending{background:var(--wl);border-color:var(--warn);color:var(--wt)}
+.sync-btn.synced{background:var(--gl);border-color:var(--green);color:var(--gt)}
+.sync-badge{
+  position:absolute;top:-6px;right:-6px;
+  background:var(--warn);color:#fff;
+  border-radius:10px;padding:1px 5px;
+  font-size:10px;font-weight:700;font-family:'DM Mono',monospace;
+  min-width:16px;text-align:center;
+}
+.offline-banner{
+  background:var(--wl);border-bottom:1px solid var(--warn);
+  padding:8px 18px;font-size:12px;color:var(--wt);
+  display:none;align-items:center;gap:8px;
+}
+.offline-banner.show{display:flex}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinning{animation:spin .8s linear infinite;display:inline-block}
+
+/* DELIVERY STATUS */
+.badge.pending-del{background:#FEF3E2;color:#7C4A03}
+.badge.delivered{background:var(--gl);color:var(--gt)}
+.delivery-section{
+  background:var(--surface2);border-radius:var(--r);
+  padding:10px 12px;margin:8px 0;
+  border-left:3px solid var(--warn);
+}
+.delivery-section.delivered-section{border-left-color:var(--green)}
+.delivery-label{font-size:10px;color:var(--text3);text-transform:uppercase;
+  letter-spacing:.5px;font-family:'DM Mono',monospace;margin-bottom:4px}
+.delivery-value{font-size:13px;font-weight:500}
+
+/* END OF DAY REMINDER */
+.eod-banner{
+  position:fixed;bottom:16px;right:16px;left:16px;
+  background:var(--text);color:#fff;
+  border-radius:var(--rl2);padding:14px 16px;
+  display:none;flex-direction:column;gap:10px;
+  box-shadow:0 8px 32px rgba(0,0,0,.3);z-index:200;
+}
+.eod-banner.show{display:flex}
+.eod-banner h4{font-size:14px;font-weight:600}
+.eod-banner p{font-size:12px;color:rgba(255,255,255,.7)}
+.eod-actions{display:flex;gap:8px}
+.btn-eod-sync{padding:9px 16px;border-radius:var(--r);font-size:13px;font-weight:600;
+  cursor:pointer;border:none;background:var(--green);color:#fff;font-family:'DM Sans',sans-serif}
+.btn-eod-dismiss{padding:9px 16px;border-radius:var(--r);font-size:13px;
+  cursor:pointer;border:1px solid rgba(255,255,255,.2);background:transparent;
+  color:rgba(255,255,255,.7);font-family:'DM Sans',sans-serif}
+
 /* ── PRINT ── */
 @media print{
   *{-webkit-print-color-adjust:exact!important;color-adjust:exact!important}
@@ -635,6 +694,13 @@ async function completeLogin(user){
   // Load fresh data from API
   await loadFromAPI();
   setPage('dashboard',document.querySelector('.nav-tab'));
+  updateSyncBtn();
+  // Check if offline
+  if(!navigator.onLine){
+    document.getElementById('offlineBanner').classList.add('show');
+  }
+  // Check EOD on login
+  setTimeout(checkEODReminder, 5000);
 }
 async function doLogin(){
   const u=document.getElementById('loginUser').value.trim();
@@ -845,7 +911,7 @@ function renderOrders(){
   let orders=d.orders.filter(o=>CU.role==='rep'?o.repId===CU.id:(!VR||o.repId===VR)).filter(orderInRange);
   const statusFilter=window._orderTab||'all';
   const q=(document.getElementById('orderSearch')||{value:''}).value?.toLowerCase()||'';
-  if(statusFilter!=='all')orders=orders.filter(o=>{const s=getStatus(o);if(statusFilter==='overdue')return isOverdue(o);return s===statusFilter;});
+  if(statusFilter!=='all')orders=orders.filter(o=>{const s=getStatus(o);if(statusFilter==='overdue')return isOverdue(o);if(statusFilter==='pending_del')return o.deliveryStatus!=='delivered';return s===statusFilter;});
   if(q)orders=orders.filter(o=>{const sh=shopMap[o.shopId];return(sh&&sh.name.toLowerCase().includes(q))||o.orderNum.toLowerCase().includes(q);});
   orders.sort((a,b)=>b.date.localeCompare(a.date));
   const tOwed=orders.reduce((a,o)=>a+orderTotal(o),0);
@@ -874,7 +940,8 @@ function renderOrders(){
     <button class="tab ${statusFilter==='partial'?'active':''}" onclick="window._orderTab='partial';renderPage()">Part paid</button>
     <button class="tab ${statusFilter==='paid'?'active':''}" onclick="window._orderTab='paid';renderPage()">Fully paid</button>
     <button class="tab ${statusFilter==='credit'?'active':''}" onclick="window._orderTab='credit';renderPage()">Credit balance</button>
-    <button class="tab ${statusFilter==='overdue'?'active':''}" onclick="window._orderTab='overdue';renderPage()" style="${statusFilter==='overdue'?'':''}">! Overdue</button>
+    <button class="tab ${statusFilter==='overdue'?'active':''}" onclick="window._orderTab='overdue';renderPage()">! Overdue</button>
+    <button class="tab ${statusFilter==='pending_del'?'active':''}" onclick="window._orderTab='pending_del';renderPage()">&#x1F69A; Pending Delivery</button>
     <div class="search-wrap">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input class="search-input" id="orderSearch" placeholder="Search shop or order no..." oninput="renderPage()">
@@ -912,6 +979,7 @@ function orderCardHTML(o,shopMap,repMap){
       <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
         <span class="badge ${badgeClass}">${overdue?'OVERDUE':statusLabel}</span>
         ${payTypeBadge}
+        ${o.deliveryStatus==='delivered'?'<span class="badge delivered">&#x1F69A; Delivered</span>':'<span class="badge pending-del">&#x23F3; Pending Delivery</span>'}
       </div>
     </div>
     ${o.distributor?`<div class="distrib-tag"> ${o.distributor}</div>`:''}
@@ -1303,18 +1371,28 @@ function selectCreditWeeks(w,el){
 async function saveShop(){
   const name=document.getElementById('s_name').value.trim();
   if(!name){alert('Please enter a shop name.');return;}
+  const shopData={name,owner:document.getElementById('s_owner').value.trim(),
+    contact:document.getElementById('s_contact').value.trim(),
+    location:document.getElementById('s_location').value.trim(),
+    tin:document.getElementById('s_tin').value.trim(),
+    creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
+    notes:document.getElementById('s_notes').value.trim()};
+  const localId='local_'+Date.now();
+  const localShop={...shopData,_localId:localId,_id:localId,id:localId,repId:CU.id};
+  const d=ld();
+  if(!isOnline||!authToken){
+    d.shops.push(localShop);sd(d);
+    addToQueue({type:'CREATE_SHOP',localId,data:shopData});
+    closeModal();renderPage();return;
+  }
   try {
-    const shop = await api('/api/shops','POST',{
-      name,
-      owner:document.getElementById('s_owner').value.trim(),
-      contact:document.getElementById('s_contact').value.trim(),
-      location:document.getElementById('s_location').value.trim(),
-      tin:document.getElementById('s_tin').value.trim(),
-      creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
-      notes:document.getElementById('s_notes').value.trim(),
-    });
-    const d=ld();d.shops.push(shop);sd(d);closeModal();renderPage();
-  } catch(e){ alert('Error: '+e.message); }
+    const shop = await api('/api/shops','POST',shopData);
+    d.shops.push(shop);sd(d);
+  } catch(e){
+    d.shops.push(localShop);sd(d);
+    addToQueue({type:'CREATE_SHOP',localId,data:shopData});
+  }
+  closeModal();renderPage();
 }
 async function updateShop(id){
   try {
@@ -1341,23 +1419,45 @@ async function saveOrder(){
   const creditDue=selectedPayMethod==='credit'?addDays(orderDate,selectedCreditWeeks*7):null;
   const payments=[];
   if(initPay>0)payments.push({amount:initPay,date:orderDate,note:selectedPayMethod==='credit'?'Initial deposit':selectedPayMethod});
-  try {
-    const order = await api('/api/orders','POST',{
-      shopId,
-      distributor:document.getElementById('o_distrib').value,
-      products:JSON.parse(JSON.stringify(tmpProds)),
-      date:orderDate,
-      paymentType:selectedPayMethod,
-      creditWeeks:selectedPayMethod==='credit'?selectedCreditWeeks:null,
-      creditDue,
-      notes:document.getElementById('o_notes').value.trim(),
-      payments
-    });
-    const d=ld();d.orders.unshift(order);sd(d);
+  const orderData={
+    shopId,
+    distributor:document.getElementById('o_distrib').value,
+    products:JSON.parse(JSON.stringify(tmpProds)),
+    date:orderDate,
+    paymentType:selectedPayMethod,
+    creditWeeks:selectedPayMethod==='credit'?selectedCreditWeeks:null,
+    creditDue,
+    notes:document.getElementById('o_notes').value.trim(),
+    payments,
+    deliveryStatus:'pending'
+  };
+  const localId='local_'+Date.now();
+  const localOrder={...orderData,_localId:localId,_id:localId,id:localId,
+    orderNum:'ORD-PENDING',repId:CU.id,createdAt:new Date().toISOString()};
+  const d=ld();
+  if(!isOnline||!authToken){
+    // Save locally and queue
+    d.orders.unshift(localOrder);sd(d);
+    addToQueue({type:'CREATE_ORDER',localId,data:orderData});
     closeModal();PAGE='orders';
     document.querySelectorAll('.nav-tab').forEach((t,i)=>{t.classList.remove('active');if(i===2)t.classList.add('active');});
     renderPage();
-  } catch(e){ alert('Error saving order: '+e.message); }
+    return;
+  }
+  try {
+    const order = await api('/api/orders','POST',orderData);
+    d.orders.unshift(order);sd(d);
+    closeModal();PAGE='orders';
+    document.querySelectorAll('.nav-tab').forEach((t,i)=>{t.classList.remove('active');if(i===2)t.classList.add('active');});
+    renderPage();
+  } catch(e){
+    // Network failed - save locally
+    d.orders.unshift(localOrder);sd(d);
+    addToQueue({type:'CREATE_ORDER',localId,data:orderData});
+    closeModal();PAGE='orders';
+    document.querySelectorAll('.nav-tab').forEach((t,i)=>{t.classList.remove('active');if(i===2)t.classList.add('active');});
+    renderPage();
+  }
 }
 async function updateOrder(id){
   if(tmpProds.length===0){alert('Please add at least one product.');return;}
@@ -1378,11 +1478,25 @@ async function addPayment(id){
   const amount=parseFloat(document.getElementById('p_amount').value);
   const date=document.getElementById('p_date').value;
   if(!amount||amount<=0||!date){alert('Please enter a valid amount and date.');return;}
+  const payData={amount,date,note:document.getElementById('p_note').value.trim()};
+  const d=ld();
+  const idx=d.orders.findIndex(x=>(x.id||x._id)===id);
+  if(idx>-1){
+    if(!d.orders[idx].payments)d.orders[idx].payments=[];
+    d.orders[idx].payments.push(payData);
+    sd(d);
+  }
+  if(!isOnline||!authToken){
+    addToQueue({type:'ADD_PAYMENT',id,data:payData});
+    closeModal();renderPage();return;
+  }
   try {
-    const updated = await api('/api/orders/'+id+'/payments','POST',{amount,date,note:document.getElementById('p_note').value.trim()});
-    const d=ld();const idx=d.orders.findIndex(x=>(x.id||x._id)===id);
-    if(idx>-1)d.orders[idx]=updated;sd(d);closeModal();renderPage();
-  } catch(e){ alert('Error: '+e.message); }
+    const updated = await api('/api/orders/'+id+'/payments','POST',payData);
+    if(idx>-1)d.orders[idx]=updated;sd(d);
+  } catch(e){
+    addToQueue({type:'ADD_PAYMENT',id,data:payData});
+  }
+  closeModal();renderPage();
 }
 function addRep(){
   const name=document.getElementById('nr_name').value.trim();
@@ -1575,6 +1689,207 @@ function exportExcel(){
   // -- DOWNLOAD --
   const fname=`SalesReport_${todayISO}.xlsx`;
   XLSX.writeFile(wb,fname);
+}
+
+
+
+// ── OFFLINE & SYNC SYSTEM ──
+let isOnline = navigator.onLine;
+let pendingQueue = JSON.parse(localStorage.getItem('mkt5_queue') || '[]');
+let syncInProgress = false;
+let eodShown = false;
+
+// Monitor network status
+window.addEventListener('online', () => {
+  isOnline = true;
+  document.getElementById('offlineBanner').classList.remove('show');
+  updateSyncBtn();
+  // Auto sync when back online
+  if(pendingQueue.length > 0 && CU) {
+    setTimeout(autoSync, 2000);
+  }
+});
+
+window.addEventListener('offline', () => {
+  isOnline = false;
+  document.getElementById('offlineBanner').classList.add('show');
+  updateSyncBtn();
+});
+
+function saveQueue(){
+  localStorage.setItem('mkt5_queue', JSON.stringify(pendingQueue));
+}
+
+function addToQueue(action){
+  action.id = Date.now().toString() + Math.random().toString(36).slice(2);
+  action.timestamp = new Date().toISOString();
+  pendingQueue.push(action);
+  saveQueue();
+  updateSyncBtn();
+}
+
+function updateSyncBtn(){
+  const btn = document.getElementById('syncBtn');
+  const badge = document.getElementById('syncBadge');
+  const icon = document.getElementById('syncIcon');
+  const label = document.getElementById('syncLabel');
+  if(!btn) return;
+  const count = pendingQueue.length;
+  if(syncInProgress){
+    btn.className = 'sync-btn syncing';
+    icon.innerHTML = '<span class="spinning">&#x21BB;</span>';
+    label.textContent = 'Syncing...';
+    badge.style.display = 'none';
+  } else if(count > 0){
+    btn.className = 'sync-btn has-pending';
+    icon.innerHTML = '&#x21BB;';
+    label.textContent = 'Sync';
+    badge.textContent = count;
+    badge.style.display = 'block';
+  } else {
+    btn.className = 'sync-btn synced';
+    icon.innerHTML = '&#x2713;';
+    label.textContent = 'Synced';
+    badge.style.display = 'none';
+    // Reset to normal after 3 seconds
+    setTimeout(()=>{
+      if(pendingQueue.length===0){
+        btn.className='sync-btn';
+        icon.innerHTML='&#x21BB;';
+        label.textContent='Sync';
+      }
+    }, 3000);
+  }
+}
+
+async function processQueue(){
+  if(!isOnline || !authToken || pendingQueue.length === 0) return;
+  syncInProgress = true;
+  updateSyncBtn();
+  const failed = [];
+  for(const action of pendingQueue){
+    try {
+      if(action.type === 'CREATE_ORDER'){
+        const order = await api('/api/orders','POST', action.data);
+        // Update local cache with server ID
+        const d = ld();
+        const idx = d.orders.findIndex(o => o._localId === action.localId);
+        if(idx > -1){ d.orders[idx] = order; sd(d); }
+      } else if(action.type === 'UPDATE_ORDER'){
+        await api('/api/orders/'+action.id,'PUT', action.data);
+      } else if(action.type === 'ADD_PAYMENT'){
+        const updated = await api('/api/orders/'+action.id+'/payments','POST', action.data);
+        const d = ld();
+        const idx = d.orders.findIndex(o => (o._id||o.id) === action.id);
+        if(idx > -1){ d.orders[idx] = updated; sd(d); }
+      } else if(action.type === 'MARK_DELIVERED'){
+        await api('/api/orders/'+action.id,'PUT',{deliveryStatus:'delivered',deliveredAt:action.deliveredAt});
+      } else if(action.type === 'CREATE_SHOP'){
+        const shop = await api('/api/shops','POST', action.data);
+        const d = ld();
+        const idx = d.shops.findIndex(s => s._localId === action.localId);
+        if(idx > -1){ d.shops[idx] = shop; sd(d); }
+      } else if(action.type === 'MARK_VISIT'){
+        await api('/api/visits','POST', action.data);
+      }
+    } catch(e){
+      console.warn('Queue item failed:', action.type, e.message);
+      failed.push(action);
+    }
+  }
+  pendingQueue = failed;
+  saveQueue();
+  syncInProgress = false;
+  updateSyncBtn();
+  if(failed.length === 0 && CU){
+    // Reload fresh data from server
+    await loadFromAPI();
+    renderPage();
+  }
+}
+
+async function manualSync(){
+  if(!CU) return;
+  if(!isOnline){
+    alert('No network connection. Please check your internet and try again.');
+    return;
+  }
+  if(syncInProgress) return;
+  try {
+    syncInProgress = true;
+    updateSyncBtn();
+    await processQueue();
+    await loadFromAPI();
+    renderPage();
+  } catch(e){
+    console.warn('Sync error:', e);
+  } finally {
+    syncInProgress = false;
+    updateSyncBtn();
+  }
+}
+
+async function autoSync(){
+  if(!isOnline || !authToken || syncInProgress) return;
+  await processQueue();
+}
+
+// End of day reminder - check at 5PM and 7PM
+function checkEODReminder(){
+  if(!CU || eodShown) return;
+  const h = new Date().getHours();
+  if((h >= 17) && pendingQueue.length > 0){
+    document.getElementById('eodBanner').classList.add('show');
+    eodShown = true;
+  }
+}
+function dismissEOD(){
+  document.getElementById('eodBanner').classList.remove('show');
+}
+
+// Auto sync every 5 minutes when online
+setInterval(()=>{ if(isOnline && CU && pendingQueue.length > 0) autoSync(); }, 5 * 60 * 1000);
+// Check EOD reminder every 30 minutes
+setInterval(checkEODReminder, 30 * 60 * 1000);
+
+// ── OFFLINE-FIRST API WRAPPER ──
+// Override api() for critical write operations to queue when offline
+async function apiWithQueue(path, method, body, queueAction){
+  if(isOnline && authToken){
+    try {
+      return await api(path, method, body);
+    } catch(e){
+      // If it fails, queue it
+      if(queueAction){ addToQueue(queueAction); }
+      throw e;
+    }
+  } else {
+    // Offline - save locally and queue
+    if(queueAction){ addToQueue(queueAction); }
+    return null; // caller handles null = offline save
+  }
+}
+
+// ── MARK AS DELIVERED ──
+async function markDelivered(orderId){
+  const deliveredAt = new Date().toISOString().slice(0,10);
+  const d = ld();
+  const order = d.orders.find(o => (o._id||o.id) === orderId);
+  if(!order) return;
+  order.deliveryStatus = 'delivered';
+  order.deliveredAt = deliveredAt;
+  sd(d);
+
+  if(isOnline && authToken){
+    try {
+      await api('/api/orders/'+orderId,'PUT',{deliveryStatus:'delivered',deliveredAt});
+    } catch(e){
+      addToQueue({type:'MARK_DELIVERED',id:orderId,deliveredAt});
+    }
+  } else {
+    addToQueue({type:'MARK_DELIVERED',id:orderId,deliveredAt});
+  }
+  renderPage();
 }
 
 
