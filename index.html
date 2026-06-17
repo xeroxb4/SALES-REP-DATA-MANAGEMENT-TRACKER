@@ -682,15 +682,15 @@ function setLoginRole(r){loginRole=r;document.getElementById('roleAdminBtn').cla
 async function completeLogin(user){
   if(!user)return;
   document.getElementById('loginErr').style.display='none';
-  const uid = user._id || user.id;
-  CU={...user, id: uid};
+  const uid = String(user._id || user.id || '');
+  CU={...user, id: uid, _id: uid};
   VR=user.role==='manager'?null:uid;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('userBadge').textContent=user.name+(user.role==='manager'?' (Manager)':'');
   if(user.role==='manager'){document.getElementById('userBadge').classList.add('manager');document.getElementById('manageRepsBtn').style.display='inline-flex';}
   else{document.getElementById('manageRepsBtn').style.display='none';}
-  saveSession({...user,id:uid});pushAppState();
+  saveSession({...user,id:uid,_id:uid});pushAppState();
   // Load fresh data from API
   await loadFromAPI();
   setPage('dashboard',document.querySelector('.nav-tab'));
@@ -775,9 +775,10 @@ function renderPage(){
 // -- DASHBOARD --
 function renderDashboard(){
   const d=ld();
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
-  let orders=d.orders.filter(o=>CU.role==='rep'?o.repId===CU.id:(!VR||o.repId===VR));
-  let shops=d.shops.filter(s=>CU.role==='rep'?s.repId===CU.id:true);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
+  const myRepId=CU._id||CU.id;
+  let orders=d.orders.filter(o=>CU.role==='rep'?String(o.repId)===String(myRepId):(!VR||String(o.repId)===String(VR)));
+  let shops=d.shops.filter(s=>CU.role==='rep'?String(s.repId)===String(myRepId):true);
   const tOwed=orders.reduce((a,o)=>a+orderTotal(o),0);
   const tPaid=orders.reduce((a,o)=>a+totalPaid(o),0);
   const tBal=orders.reduce((a,o)=>a+balanceAmt(o),0);
@@ -846,11 +847,12 @@ function renderDashboard(){
 // -- SHOPS --
 function renderShops(){
   const d=ld();
-  let shops=d.shops.filter(s=>CU.role==='rep'?s.repId===CU.id:true);
+  const repMyId=CU._id||CU.id;
+  let shops=d.shops.filter(s=>CU.role==='rep'?String(s.repId)===String(repMyId):true);
   const q=(document.getElementById('shopSearch')||{value:''}).value?.toLowerCase()||'';
   if(q)shops=shops.filter(s=>s.name.toLowerCase().includes(q)||(s.owner||'').toLowerCase().includes(q)||(s.location||'').toLowerCase().includes(q));
   shops.sort((a,b)=>a.name.localeCompare(b.name));
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
   const cards=shops.map(s=>{
     const shopOrders=d.orders.filter(o=>o.shopId===s.id);
     const sTot=shopOrders.reduce((a,o)=>a+orderTotal(o),0);
@@ -906,9 +908,10 @@ function openOrderForShop(shopId){
 // -- ORDERS --
 function renderOrders(){
   const d=ld();
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
   const shopMap={};d.shops.forEach(s=>shopMap[s.id]=s);
-  let orders=d.orders.filter(o=>CU.role==='rep'?o.repId===CU.id:(!VR||o.repId===VR)).filter(orderInRange);
+  const myId=CU._id||CU.id;
+  let orders=d.orders.filter(o=>CU.role==='rep'?String(o.repId)===String(myId):(!VR||String(o.repId)===String(VR))).filter(orderInRange);
   const statusFilter=window._orderTab||'all';
   const q=(document.getElementById('orderSearch')||{value:''}).value?.toLowerCase()||'';
   if(statusFilter!=='all')orders=orders.filter(o=>{const s=getStatus(o);if(statusFilter==='overdue')return isOverdue(o);if(statusFilter==='pending_del')return o.deliveryStatus!=='delivered';return s===statusFilter;});
@@ -1010,12 +1013,12 @@ function todayDayName(){const d=['Sunday','Monday','Tuesday','Wednesday','Thursd
 
 function renderRoute(){
   const d=ld();
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
   const reps=d.users.filter(u=>u.role==='rep');
   // set default routeRepId
   if(!routeRepId){
-    if(CU.role==='rep')routeRepId=CU.id;
-    else if(reps.length)routeRepId=reps[0].id;
+    if(CU.role==='rep')routeRepId=CU._id||CU.id;
+    else if(reps.length)routeRepId=reps[0]._id||reps[0].id;
   }
   if(!routeDay)routeDay=todayDayName()==='Saturday'||todayDayName()==='Sunday'?'Monday':todayDayName();
 
@@ -1033,7 +1036,7 @@ function renderRoute(){
 
   // get shops assigned to this rep+day
   const repId=routeRepId||CU.id;
-  const allShops=d.shops.filter(s=>s.repId===repId);
+  const allShops=d.shops.filter(s=>String(s.repId)===String(repId));
   const dayShops=allShops.filter(s=>s.routeDays&&s.routeDays.includes(routeDay));
   const otherDayShops=DAYS.filter(day=>day!==routeDay).map(day=>({
     day,shops:allShops.filter(s=>s.routeDays&&s.routeDays.includes(day))
@@ -1041,7 +1044,7 @@ function renderRoute(){
 
   // today's visits & orders
   const todayStr=today();
-  const todayOrders=d.orders.filter(o=>o.repId===repId&&o.date===todayStr);
+  const todayOrders=d.orders.filter(o=>String(o.repId)===String(repId)&&o.date===todayStr);
   const visits=d.visits||[];
   const todayVisits=visits.filter(v=>v.repId===repId&&v.date===todayStr);
 
@@ -1378,7 +1381,8 @@ async function saveShop(){
     creditLimit:parseFloat(document.getElementById('s_credit').value)||0,
     notes:document.getElementById('s_notes').value.trim()};
   const localId='local_'+Date.now();
-  const localShop={...shopData,_localId:localId,_id:localId,id:localId,repId:CU.id};
+  const repId = CU._id || CU.id;
+  const localShop={...shopData,_localId:localId,_id:localId,id:localId,repId};
   const d=ld();
   if(!isOnline||!authToken){
     d.shops.push(localShop);sd(d);
@@ -1432,8 +1436,9 @@ async function saveOrder(){
     deliveryStatus:'pending'
   };
   const localId='local_'+Date.now();
+  const repId = CU._id || CU.id;
   const localOrder={...orderData,_localId:localId,_id:localId,id:localId,
-    orderNum:'ORD-PENDING',repId:CU.id,createdAt:new Date().toISOString()};
+    orderNum:'ORD-PENDING',repId,createdAt:new Date().toISOString()};
   const d=ld();
   if(!isOnline||!authToken){
     // Save locally and queue
@@ -1543,7 +1548,7 @@ function saveMgrEmail(){
 function exportExcel(){
   if(typeof XLSX==='undefined'){alert('Excel library not loaded yet. Please try again in a moment.');return;}
   const d=ld();
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
   const shopMap={};d.shops.forEach(s=>shopMap[s.id]=s);
   const reps=d.users.filter(u=>u.role==='rep');
 
@@ -1904,9 +1909,10 @@ async function markDelivered(orderId){
 // -- PRINT --
 function doPrint(){
   const d=ld();
-  const repMap={};d.users.forEach(u=>repMap[u.id]=u.name);
+  const repMap={};d.users.forEach(u=>{const uid=u._id||u.id;repMap[uid]=u.name;});
   const shopMap={};d.shops.forEach(s=>shopMap[s.id]=s);
-  let orders=d.orders.filter(o=>CU.role==='rep'?o.repId===CU.id:(!VR||o.repId===VR)).filter(orderInRange);
+  const myId=CU._id||CU.id;
+  let orders=d.orders.filter(o=>CU.role==='rep'?String(o.repId)===String(myId):(!VR||String(o.repId)===String(VR))).filter(orderInRange);
   const now=new Date();
   const dateStr=now.toLocaleDateString('en-GH',{year:'numeric',month:'short',day:'numeric'});
   const timeStr=now.toLocaleTimeString('en-GH',{hour:'2-digit',minute:'2-digit'});
