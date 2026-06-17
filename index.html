@@ -694,7 +694,9 @@ async function completeLogin(user){
   document.getElementById('userBadge').textContent=user.name+(user.role==='manager'?' (Manager)':'');
   if(user.role==='manager'){document.getElementById('userBadge').classList.add('manager');document.getElementById('manageRepsBtn').style.display='inline-flex';}
   else{document.getElementById('manageRepsBtn').style.display='none';}
-  saveSession({...user,id:uid,_id:uid});pushAppState();
+  saveSession({...user,id:uid,_id:uid});
+  localStorage.setItem('mkt5_user', JSON.stringify({...user,id:uid,_id:uid}));
+  pushAppState();
   // Load fresh data from API
   await loadFromAPI();
   setPage('dashboard',document.querySelector('.nav-tab'));
@@ -727,7 +729,9 @@ async function doLogin(){
 }
 function logout(){
   CU=null;VR=null;PAGE='dashboard';DF={mode:'all',from:null,to:null};
-  authToken=null;localStorage.removeItem('mkt5_token');
+  authToken=null;
+  localStorage.removeItem('mkt5_token');
+  localStorage.removeItem('mkt5_user');
   googleUser=null;driveFileId=null;clearSession();clearGoogleUser();
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('app').style.display='none';
@@ -2006,19 +2010,20 @@ checkSetupNotice();
 init();
 (async function(){
   const savedToken = localStorage.getItem('mkt5_token');
-  if(savedToken){
+  const savedUser = localStorage.getItem('mkt5_user');
+  if(savedToken && savedUser){
     authToken = savedToken;
     try {
-      // verify token by loading data
-      const d = await loadFromAPI();
-      const sess = loadSession();
-      if(sess){
-        // find user in loaded data
-        const user = d.users.find(u=>u.id===sess.id||u._id===sess.id||u.username===sess.username);
-        if(user) completeLogin(user);
-        else { authToken=null; localStorage.removeItem('mkt5_token'); }
-      } else { authToken=null; localStorage.removeItem('mkt5_token'); }
-    } catch(e){ authToken=null; localStorage.removeItem('mkt5_token'); }
+      // Restore user from localStorage immediately (no wait)
+      const user = JSON.parse(savedUser);
+      // Show app right away
+      await completeLogin(user);
+    } catch(e){ 
+      // Token invalid - clear and show login
+      authToken=null; 
+      localStorage.removeItem('mkt5_token');
+      localStorage.removeItem('mkt5_user');
+    }
   }
 })();
 window.addEventListener('popstate',function(e){
