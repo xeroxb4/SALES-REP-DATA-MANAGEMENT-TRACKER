@@ -1498,17 +1498,25 @@ async function addPayment(id){
   }
   closeModal();renderPage();
 }
-function addRep(){
+async function addRep(){
   const name=document.getElementById('nr_name').value.trim();
   const username=document.getElementById('nr_user').value.trim().toLowerCase();
   const password=document.getElementById('nr_pass').value;
   const email=document.getElementById('nr_email').value.trim().toLowerCase();
   if(!name||!username||!password){alert('Please fill name, username and password.');return;}
-  const d=ld();
-  if(d.users.find(u=>u.username===username)){alert('Username already exists.');return;}
-  d.users.push({id:'rep_'+Date.now(),username,password,name,role:'rep',email});
-  sd(d);closeModal();openModal('reps');
-  alert(`Rep added!\nUsername: ${username}\nPassword: ${password}`);
+  try {
+    const newRep = await api('/api/users','POST',{name,username,password,email});
+    console.log('Rep created:', newRep);
+    const d=ld();
+    if(!d.users)d.users=[];
+    d.users.push(newRep);
+    sd(d);
+    closeModal();openModal('reps');
+    alert('Rep added!\nUsername: '+username+'\nPassword: '+password+'\n\nThey can now log in from any device!');
+  } catch(e){ 
+    console.error('Add rep error:', e);
+    alert('Error adding rep: '+e.message); 
+  }
 }
 async function deleteRep(id){
   if(!confirm('Remove rep? Their data remains.'))return;
