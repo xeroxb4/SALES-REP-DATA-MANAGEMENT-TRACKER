@@ -537,7 +537,11 @@ const GOOGLE_CLIENT_ID = '470638059581-rtno2bifum3b4ki1cv86ij6nn7ojoc1s.apps.goo
 const API_URL = 'https://sale-rep-api.onrender.com';
 let authToken = null;
 const DISTRIBUTORS = ['AMATA','DADDY ASH'];
-function getId(obj){ return obj._id || obj.id || ''; }
+function getId(obj){ 
+  if(!obj) return '';
+  const id = obj._id || obj.id || '';
+  return String(id);
+}
 
 // ── API HELPERS ──
 async function api(path, method='GET', body=null){
@@ -874,9 +878,9 @@ function renderShops(){
         <div class="shop-stat"><div class="shop-stat-label">Balance</div><div class="shop-stat-val red">${fmt(sBal)}</div></div>
       </div>
       <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
-        <button class="btn-a accent" onclick="event.stopPropagation();openOrderForShop('${s.id}')"> New Order</button>
-        <button class="btn-a" onclick="event.stopPropagation();openModal('editShop','${s.id}')"> Edit</button>
-        <button class="btn-a red" onclick="event.stopPropagation();delShop('${s.id}')"> Delete</button>
+        <button class="btn-a accent" onclick="event.stopPropagation();openOrderForShop('${getId(s)}')"> New Order</button>
+        <button class="btn-a" onclick="event.stopPropagation();openModal('editShop','${getId(s)}')"> Edit</button>
+        <button class="btn-a red" onclick="event.stopPropagation();delShop('${getId(s)}')"> Delete</button>
       </div>
     </div>`;
   }).join('');
@@ -1146,8 +1150,28 @@ function markVisitedNoSale(shopId,shopName){
 }
 
 
-async function delShop(id){if(!confirm('Delete this shop? All its orders will remain.'))return;try{await api('/api/shops/'+id,'DELETE');const d=ld();d.shops=d.shops.filter(s=>(s.id||s._id)!==id);sd(d);renderPage();}catch(e){alert('Error: '+e.message);}}
-async function delOrder(id){if(!confirm('Delete this order?'))return;try{await api('/api/orders/'+id,'DELETE');const d=ld();d.orders=d.orders.filter(o=>(o.id||o._id)!==id);sd(d);renderPage();}catch(e){alert('Error: '+e.message);}}
+async function delShop(shopId){
+  if(!confirm('Delete this shop? All its orders will remain.'))return;
+  const cleanId = String(shopId).replace('local_','');
+  if(cleanId.startsWith('local_')||shopId.startsWith('local_')){
+    const d=ld();d.shops=d.shops.filter(s=>getId(s)!==shopId);sd(d);renderPage();return;
+  }
+  try{
+    await api('/api/shops/'+cleanId,'DELETE');
+    const d=ld();d.shops=d.shops.filter(s=>getId(s)!==shopId&&getId(s)!==cleanId);sd(d);renderPage();
+  }catch(e){alert('Error deleting shop: '+e.message);}
+}
+async function delOrder(orderId){
+  if(!confirm('Delete this order?'))return;
+  const cleanId=String(orderId).replace('local_','');
+  if(orderId.startsWith&&orderId.startsWith('local_')){
+    const d=ld();d.orders=d.orders.filter(o=>getId(o)!==orderId);sd(d);renderPage();return;
+  }
+  try{
+    await api('/api/orders/'+cleanId,'DELETE');
+    const d=ld();d.orders=d.orders.filter(o=>getId(o)!==orderId&&getId(o)!==cleanId);sd(d);renderPage();
+  }catch(e){alert('Error deleting order: '+e.message);}
+}
 
 // -- PRODUCT TEMP --
 function renderTmpProds(){
@@ -1317,7 +1341,7 @@ function openModal(type,id,extraId){
       return`<div class="shop-assign-row">
         <div style="font-size:13px;font-weight:500;min-width:100px">${s.name}<div style="font-size:11px;color:var(--text3)">${s.location||''}</div></div>
         <div class="day-checkbox-row">
-          ${DAYS.map(day=>`<span class="day-chip ${assignedDays.includes(day)?'active':''}" onclick="toggleShopDay('${s.id}','${day}',this)">${day.slice(0,3)}</span>`).join('')}
+          ${DAYS.map(day=>`<span class="day-chip ${assignedDays.includes(day)?'active':''}" onclick="toggleShopDay('${getId(s)}','${day}',this)">${day.slice(0,3)}</span>`).join('')}
         </div>
       </div>`;
     }).join('');
@@ -1399,8 +1423,9 @@ async function saveShop(){
   closeModal();renderPage();
 }
 async function updateShop(id){
+  const cleanId=String(id).replace('local_','');
   try {
-    const updated = await api('/api/shops/'+id,'PUT',{
+    const updated = await api('/api/shops/'+cleanId,'PUT',{
       name:document.getElementById('s_name').value.trim(),
       owner:document.getElementById('s_owner').value.trim(),
       contact:document.getElementById('s_contact').value.trim(),
@@ -1468,7 +1493,8 @@ async function updateOrder(id){
   if(tmpProds.length===0){alert('Please add at least one product.');return;}
   try {
     const d=ld();const o=d.orders.find(x=>(x.id||x._id)===id);
-    const updated = await api('/api/orders/'+id,'PUT',{
+    const cleanOrderId=String(id).replace('local_','');
+    const updated = await api('/api/orders/'+cleanOrderId,'PUT',{
       shopId:document.getElementById('o_shop').value||o.shopId,
       distributor:document.getElementById('o_distrib').value,
       date:document.getElementById('o_date').value||o.date,
@@ -1484,22 +1510,23 @@ async function addPayment(id){
   const date=document.getElementById('p_date').value;
   if(!amount||amount<=0||!date){alert('Please enter a valid amount and date.');return;}
   const payData={amount,date,note:document.getElementById('p_note').value.trim()};
+  const cleanPayId=String(id).replace('local_','');
   const d=ld();
-  const idx=d.orders.findIndex(x=>(x.id||x._id)===id);
+  const idx=d.orders.findIndex(x=>getId(x)===id||getId(x)===cleanPayId);
   if(idx>-1){
     if(!d.orders[idx].payments)d.orders[idx].payments=[];
     d.orders[idx].payments.push(payData);
     sd(d);
   }
   if(!isOnline||!authToken){
-    addToQueue({type:'ADD_PAYMENT',id,data:payData});
+    addToQueue({type:'ADD_PAYMENT',id:cleanPayId,data:payData});
     closeModal();renderPage();return;
   }
   try {
-    const updated = await api('/api/orders/'+id+'/payments','POST',payData);
+    const updated = await api('/api/orders/'+cleanPayId+'/payments','POST',payData);
     if(idx>-1)d.orders[idx]=updated;sd(d);
   } catch(e){
-    addToQueue({type:'ADD_PAYMENT',id,data:payData});
+    addToQueue({type:'ADD_PAYMENT',id:cleanPayId,data:payData});
   }
   closeModal();renderPage();
 }
@@ -1893,14 +1920,15 @@ async function markDelivered(orderId){
   order.deliveredAt = deliveredAt;
   sd(d);
 
-  if(isOnline && authToken){
+  const cleanDelId=String(orderId).replace('local_','');
+  if(isOnline && authToken && !orderId.toString().startsWith('local_')){
     try {
-      await api('/api/orders/'+orderId,'PUT',{deliveryStatus:'delivered',deliveredAt});
+      await api('/api/orders/'+cleanDelId,'PUT',{deliveryStatus:'delivered',deliveredAt});
     } catch(e){
-      addToQueue({type:'MARK_DELIVERED',id:orderId,deliveredAt});
+      addToQueue({type:'MARK_DELIVERED',id:cleanDelId,deliveredAt});
     }
   } else {
-    addToQueue({type:'MARK_DELIVERED',id:orderId,deliveredAt});
+    addToQueue({type:'MARK_DELIVERED',id:cleanDelId,deliveredAt});
   }
   renderPage();
 }
