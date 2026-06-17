@@ -978,8 +978,9 @@ function orderCardHTML(o,shopMap,repMap){
   </div>`:'';
   const histRows=pays.slice().reverse().slice(0,4).map(p=>`<div class="pay-row"><span class="pay-date">${p.date}</span><span class="pay-amt">${fmt(p.amount)}</span>${p.note?`<span class="pay-note">${p.note}</span>`:'<span></span>'}</div>`).join('');
   const morePays=pays.length>4?`<div style="font-size:11px;color:var(--text3);margin-top:3px">+${pays.length-4} more</div>`:'';
-  const actions=CU.role!=='manager'?`<button class="btn-a green" onclick="openModal('pay','${o.id}')"> Record Payment</button>
-    <button class="btn-a" onclick="openModal('editOrder','${o.id}')"> Edit</button>`:'';
+  const oid=getId(o);
+  const actions=CU.role!=='manager'?`<button class="btn-a green" onclick="openModal('pay','${oid}')">&#x1F4B5; Record Payment</button>
+    <button class="btn-a" onclick="openModal('editOrder','${oid}')">&#x270F; Edit</button>`:'';
   return`<div class="order-card ${overdue?'overdue-flash':''}">
     <div class="order-top">
       <div>
@@ -1215,7 +1216,7 @@ function openModal(type,id,extraId){
     </div></div>`;
 
   } else if(type==='editShop'){
-    const s=d.shops.find(x=>x.id===id);
+    const s=d.shops.find(x=>getId(x)===id||String(x._id)===id||String(x.id)===id);
     mw.innerHTML=`<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">
       <div class="modal-title"> Edit Shop</div>
       <div class="form-row"><div class="form-group"><label class="form-label">Shop Name *</label><input class="form-input" id="s_name" value="${s.name}"></div><div class="form-group"><label class="form-label">Owner Name</label><input class="form-input" id="s_owner" value="${s.owner||''}"></div></div>
@@ -1281,7 +1282,7 @@ function openModal(type,id,extraId){
     renderTmpProds();
 
   } else if(type==='pay'){
-    const o=d.orders.find(x=>x.id===id);
+    const o=d.orders.find(x=>getId(x)===id||String(x._id||'')===id||String(x.id||'')===id);
     const sh=d.shops.find(s=>s.id===o.shopId);
     const bal=balanceAmt(o),cr=creditAmt(o),s=getStatus(o);
     const hintHTML=s==='credit'?`<div class="balance-hint teal-h">This shop has a credit balance of <strong>${fmt(cr)}</strong>. New payment adds to their credit.</div>`:`<div class="balance-hint red-h">Balance remaining: <strong>${fmt(bal)}</strong><br><small>Overpayment saved as credit for next order.</small></div>`;
@@ -1298,7 +1299,7 @@ function openModal(type,id,extraId){
     </div></div>`;
 
   } else if(type==='editOrder'){
-    const o=d.orders.find(x=>x.id===id);
+    const o=d.orders.find(x=>getId(x)===id||String(x._id)===id||String(x.id)===id);
     tmpProds=JSON.parse(JSON.stringify(o.products||[]));
     const shops=d.shops.filter(s=>CU.role==='rep'?s.repId===CU.id:true);
     const shopOptions=shops.map(s=>`<option value="${s.id}" ${o.shopId===s.id?'selected':''}>${s.name}${s.location?' \u2014 '+s.location:''}</option>`).join('');
