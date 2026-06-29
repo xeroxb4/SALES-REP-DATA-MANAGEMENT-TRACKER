@@ -480,8 +480,8 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
     </div>
     <div class="login-tagline">Sales & payment tracking for your team</div>
     <div class="role-toggle">
-      <button class="role-btn active" id="roleAdminBtn" onclick="setLoginRole('admin')">Admin / Manager</button>
-      <button class="role-btn" id="roleRepBtn" onclick="setLoginRole('rep')">Sales Rep</button>
+      <button class="role-btn active" id="roleAdminBtn" onclick="setLoginRole('admin')">&#x1F451; Admin / Manager</button>
+      <button class="role-btn" id="roleRepBtn" onclick="setLoginRole('rep')">&#x1F464; Sales Rep</button>
     </div>
     <div class="setup-notice" id="setupNotice" style="display:none">
       ⚙ Google Sign-In not configured. Open file, find <code style="background:rgba(0,0,0,.2);padding:1px 5px;border-radius:3px;font-family:'DM Mono',monospace;font-size:11px">YOUR_GOOGLE_CLIENT_ID</code> and replace it.
@@ -496,10 +496,10 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
     </div>
     <div class="divider-or">or use password</div>
     <div class="login-err" id="loginErr">Incorrect username or password.</div>
-    <label class="login-label">Username</label>
-    <input class="login-input" id="loginUser" placeholder="Enter username" autocomplete="username">
+    <label class="login-label" id="loginUserLabel">Username</label>
+    <input class="login-input" id="loginUser" placeholder="Enter your username" autocomplete="username">
     <label class="login-label">Password</label>
-    <input class="login-input" type="password" id="loginPass" placeholder="Enter password" onkeydown="if(event.key==='Enter')doLogin()">
+    <input class="login-input" type="password" id="loginPass" placeholder="Enter your password" onkeydown="if(event.key==='Enter')doLogin()">
     <button class="btn-login" onclick="doLogin()">Sign In →</button>
   </div>
 </div>
@@ -760,7 +760,18 @@ async function saveToDrive(data){
 async function getAccessToken(){return new Promise(resolve=>{if(!isGCfg()){resolve(null);return;}google.accounts.oauth2.initTokenClient({client_id:GOOGLE_CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.file',callback:r=>resolve(r.access_token)}).requestAccessToken({prompt:''});});}
 
 // -- AUTH --
-function setLoginRole(r){loginRole=r;document.getElementById('roleAdminBtn').classList.toggle('active',r==='admin');document.getElementById('roleRepBtn').classList.toggle('active',r==='rep');}
+function setLoginRole(r){
+  loginRole=r;
+  document.getElementById('roleAdminBtn').classList.toggle('active',r==='admin');
+  document.getElementById('roleRepBtn').classList.toggle('active',r==='rep');
+  const userInput=document.getElementById('loginUser');
+  const passInput=document.getElementById('loginPass');
+  if(userInput){userInput.placeholder=r==='admin'?'Manager username':'Your rep username';}
+  if(passInput){passInput.placeholder=r==='admin'?'Manager password':'Your rep password';}
+  // clear error
+  const err=document.getElementById('loginErr');
+  if(err)err.style.display='none';
+}
 async function completeLogin(user){
   if(!user)return;
   document.getElementById('loginErr').style.display='none';
