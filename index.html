@@ -513,6 +513,11 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
     </div>
     <div class="header-right">
       <span class="rep-badge" id="userBadge"></span>
+      <button class="sync-btn" id="syncBtn" onclick="manualSync()" title="Sync data">
+        <span id="syncIcon">&#x21BB;</span>
+        <span id="syncLabel">Sync</span>
+        <span class="sync-badge" id="syncBadge" style="display:none">0</span>
+      </button>
       <button class="btn-h accent" id="addBtn" onclick="handleAddBtn()">+ New</button>
       <button class="btn-h" onclick="doPrint()">🖨 Print</button>
       <button class="btn-h" onclick="exportExcel()" id="exportBtn">📊 Export Excel</button>
@@ -536,6 +541,79 @@ body.dark .tab:hover{background:var(--accent);color:#fff}
 const GOOGLE_CLIENT_ID = '470638059581-rtno2bifum3b4ki1cv86ij6nn7ojoc1s.apps.googleusercontent.com';
 const API_URL = 'https://sale-rep-api.onrender.com';
 let authToken = null;
+
+// ── PRODUCT CATALOGUE ──
+const PRODUCTS = [
+  // ROLLONS (50ML)
+  { code:'89156-01100-50', name:'Derma Control', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01200-50', name:'Pearl and Beauty', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01300-50', name:'Dry Comfort', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01400-50', name:'Black & White Invisible Clear Women', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01500-50', name:'Fresh Energy', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01600-50', name:'Fresh Natural', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01700-50', name:'Dry Impact', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01800-50', name:'Fresh Active', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-01900-50', name:'Black & White Invisible Power Original Men', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-02000-50', name:'Cool Kick', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-02100-50', name:'Deep Original', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-02200-50', name:'Deep Amazonia', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-02300-50', name:'Deep Expresso', type:'Rollon', size:'50ML', category:'Rollon' },
+  { code:'89156-02400-50', name:'Silver', type:'Rollon', size:'50ML', category:'Rollon' },
+
+  // SPRAYS 250ML
+  { code:'89156-01101-25', name:'Derma Control', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01201-25', name:'Pearl and Beauty', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01301-25', name:'Dry Comfort', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01401-25', name:'Black & White Invisible Clear Women', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01501-25', name:'Fresh Energy', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01601-25', name:'Fresh Natural', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01701-25', name:'Dry Impact', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01801-25', name:'Fresh Active', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-01901-25', name:'Black & White Invisible Power Original Men', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-02001-25', name:'Cool Kick', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-02101-25', name:'Deep Original', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-02201-25', name:'Deep Amazonia', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-02301-25', name:'Deep Expresso', type:'Spray', size:'250ML', category:'Spray' },
+  { code:'89156-02401-25', name:'Silver', type:'Spray', size:'250ML', category:'Spray' },
+
+  // SPRAYS 400ML
+  { code:'89156-01102-40', name:'Derma Control', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01202-40', name:'Pearl and Beauty', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01302-40', name:'Dry Comfort', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01402-40', name:'Black & White Invisible Clear Women', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01502-40', name:'Fresh Energy', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01602-40', name:'Fresh Natural', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01702-40', name:'Dry Impact', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01802-40', name:'Fresh Active', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-01902-40', name:'Black & White Invisible Power Original Men', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-02002-40', name:'Cool Kick', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-02102-40', name:'Deep Original', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-02202-40', name:'Deep Amazonia', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-02302-40', name:'Deep Expresso', type:'Spray', size:'400ML', category:'Spray' },
+  { code:'89156-02402-40', name:'Silver', type:'Spray', size:'400ML', category:'Spray' },
+
+  // LOTIONS 400ML
+  { code:'89156-05600-40', name:'Nourishing Cocoa', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-05700-40', name:'Rich Nourishing', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-05800-40', name:'Perfect and Radiant', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-05900-40', name:'Deep Impact', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-06000-40', name:'Shea Smooth', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-06100-40', name:'Q10 Lotion', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-06200-40', name:'Radiant and Beauty (Advance Care)', type:'Lotion', size:'400ML', category:'Lotion' },
+  { code:'89156-06300-40', name:'Radiant and Beauty (Even Glow, Vitamin C)', type:'Lotion', size:'400ML', category:'Lotion' },
+];
+
+function getProductOptions(filterText='', filterCat=''){
+  return PRODUCTS.filter(p=>{
+    const matchText = !filterText || 
+      p.name.toLowerCase().includes(filterText.toLowerCase()) || 
+      p.code.includes(filterText) ||
+      p.type.toLowerCase().includes(filterText.toLowerCase());
+    const matchCat = !filterCat || p.category === filterCat;
+    return matchText && matchCat;
+  });
+}
+
 const DISTRIBUTORS = ['AMATA','DADDY ASH'];
 function getId(obj){ 
   if(!obj) return '';
@@ -1011,7 +1089,8 @@ function orderCardHTML(o,shopMap,repMap){
     ${pays.length?`<div class="pay-history"><div class="pay-history-title">Payments${DF.mode!=='all'?' (period)':''}</div>${histRows}${morePays}</div>`:''}
     <div class="card-actions">
       ${actions}
-      <button class="btn-a red" onclick="delOrder('${o.id}')"> Delete</button>
+      ${o.deliveryStatus!=='delivered'?`<button class="btn-a" style="background:var(--bl);border-color:var(--blue);color:var(--bt)" onclick="markDelivered('${oid}')">&#x1F69A; Mark Delivered</button>`:`<span class="badge delivered">&#x2713; Delivered ${o.deliveredAt||''}</span>`}
+      <button class="btn-a red" onclick="delOrder('${oid}')">&#x1F5D1; Delete</button>
     </div>
   </div>`;
 }
@@ -1185,15 +1264,62 @@ function renderTmpProds(){
   cont.innerHTML=tmpProds.length?tmpProds.map((p,i)=>`<div class="product-item"><div class="product-detail"><strong>${p.name}${p.variant?' \u2014 '+p.variant:''}</strong><span>${p.qty} ${p.unit} \u00D7 ${fmt(p.unitPrice)} = ${fmt(p.qty*p.unitPrice)}</span></div><button class="btn-remove-prod" onclick="removeProd(${i})">x</button></div>`).join(''):'<div style="padding:10px 12px;font-size:12px;color:var(--text3)">No products added yet.</div>';
   const tot=document.getElementById('tmpTotal');if(tot)tot.textContent=fmt(total);
 }
+// current product category filter
+let _prodCatFilter = '';
+
+function filterProdCat(cat, el){
+  _prodCatFilter = cat;
+  document.querySelectorAll('.day-chip').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active');
+  renderProductDropdown();
+}
+
+function renderProductDropdown(){
+  const sel = document.getElementById('np_product');
+  if(!sel) return;
+  const search = (document.getElementById('np_search')||{value:''}).value;
+  const products = getProductOptions(search, _prodCatFilter);
+  sel.innerHTML = products.map(p=>
+    `<option value="${p.code}">[${p.category}] ${p.name} ${p.size} — ${p.code}</option>`
+  ).join('');
+}
+
+function onProductSelect(){
+  const sel = document.getElementById('np_product');
+  if(!sel||!sel.value) return;
+  const p = PRODUCTS.find(x=>x.code===sel.value);
+  if(!p) return;
+  // Set unit based on category
+  const unitSel = document.getElementById('np_unit');
+  if(unitSel){
+    if(p.category==='Rollon'||p.category==='Spray'||p.category==='Lotion'){
+      unitSel.value='pcs';
+    }
+  }
+}
+
 function addProdToList(){
-  const name=document.getElementById('np_name').value.trim();
-  const variant=document.getElementById('np_variant').value.trim();
+  const sel = document.getElementById('np_product');
+  const selectedCode = sel ? sel.value : '';
+  const selectedProduct = PRODUCTS.find(p=>p.code===selectedCode);
+  if(!selectedProduct){alert('Please select a product from the list.');return;}
   const qty=parseFloat(document.getElementById('np_qty').value);
   const unit=document.getElementById('np_unit').value;
   const price=parseFloat(document.getElementById('np_price').value);
-  if(!name||isNaN(qty)||qty<=0||isNaN(price)||price<0){alert('Please fill product name, quantity and unit price.');return;}
-  tmpProds.push({name,variant,qty,unit,unitPrice:price});
-  document.getElementById('np_name').value='';document.getElementById('np_variant').value='';document.getElementById('np_qty').value='';document.getElementById('np_price').value='';
+  if(isNaN(qty)||qty<=0){alert('Please enter quantity.');return;}
+  if(isNaN(price)||price<0){alert('Please enter unit price.');return;}
+  tmpProds.push({
+    name: selectedProduct.name,
+    variant: selectedProduct.size,
+    type: selectedProduct.type,
+    code: selectedProduct.code,
+    category: selectedProduct.category,
+    qty, unit, unitPrice: price
+  });
+  // Reset fields
+  document.getElementById('np_qty').value='';
+  document.getElementById('np_price').value='';
+  if(sel) sel.selectedIndex=-1;
   renderTmpProds();
 }
 function removeProd(i){tmpProds.splice(i,1);renderTmpProds();}
