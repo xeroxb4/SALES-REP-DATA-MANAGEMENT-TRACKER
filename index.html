@@ -666,6 +666,11 @@ let CU=null,VR=null,PAGE='dashboard',DF={mode:'all',from:null,to:null};
 let routeDay=null,routeRepId=null;
 let tmpProds=[],loginRole='admin';
 let googleUser=null,driveFileId=null;
+// Default role on page load
+document.addEventListener('DOMContentLoaded', ()=>{ 
+  setLoginRole('admin'); 
+  renderProductDropdown && renderProductDropdown();
+});
 
 // -- HELPERS --
 function fmt(n){return 'GH\u20B5 '+Number(n).toLocaleString('en-GH',{minimumFractionDigits:2,maximumFractionDigits:2});}
@@ -1288,11 +1293,17 @@ function filterProdCat(cat, el){
 function renderProductDropdown(){
   const sel = document.getElementById('np_product');
   if(!sel) return;
-  const search = (document.getElementById('np_search')||{value:''}).value;
+  const search = (document.getElementById('np_search')||{value:''}).value || '';
   const products = getProductOptions(search, _prodCatFilter);
+  if(products.length === 0){
+    sel.innerHTML = '<option disabled>No products match your search</option>';
+    return;
+  }
   sel.innerHTML = products.map(p=>
     `<option value="${p.code}">[${p.category}] ${p.name} ${p.size} — ${p.code}</option>`
   ).join('');
+  // Auto-select first item
+  if(sel.options.length > 0 && sel.selectedIndex === -1) sel.selectedIndex = 0;
 }
 
 function onProductSelect(){
@@ -1417,6 +1428,7 @@ function openModal(type,id,extraId){
       <div class="modal-footer"><button class="btn-cancel" onclick="closeModal()">Cancel</button><button class="btn-save" onclick="saveOrder()">Save Order</button></div>
     </div></div>`;
     renderTmpProds();
+    setTimeout(()=>{ _prodCatFilter=''; renderProductDropdown(); }, 100);
 
   } else if(type==='pay'){
     const o=d.orders.find(x=>getId(x)===id||String(x._id||'')===id||String(x.id||'')===id);
